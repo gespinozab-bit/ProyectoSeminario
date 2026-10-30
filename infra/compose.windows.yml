@@ -1,0 +1,82 @@
+# Use together with docker-compose.yml to retain the existing PostgreSQL volume.
+x-local-environment: &local-environment
+  NODE_ENV: development
+  PORT: 3000
+  WEB_ORIGIN: http://localhost:${LOCAL_WEB_PORT:-8080}
+  DATABASE_URL: ${LOCAL_DATABASE_URL:?Define LOCAL_DATABASE_URL}
+  JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?Define JWT_ACCESS_SECRET}
+  JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?Define JWT_REFRESH_SECRET}
+  TRUST_PROXY_HOPS: 1
+  LOG_PRETTY: 'false'
+  MEDIA_STORAGE_PATH: /app/storage/media
+
+services:
+  migrate:
+    image: lensegua-windows-tools:local
+    build:
+      context: ..
+      target: tools
+    environment: *local-environment
+    command: ['npm', 'exec', '--', 'prisma', 'migrate', 'deploy']
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: 'no'
+
+  api:
+    image: lensegua-windows-api:local
+    build:
+      context: ..
+      target: api
+    environment: *local-environment
+    volumes:
+      - ../storage/media:/app/storage/media
+    restart: unless-stopped
+    init: true
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:3000/api/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 5s
+      timeout: 4s
+      retries: 15
+      start_period: 10s
+
+  web:
+    image: lensegua-windows-web:local
+    build:
+      context: ..
+      target: web
+    environment:
+      DOMAIN: ':80'
+    ports:
+      - '127.0.0.1:${LOCAL_WEB_PORT:-8080}:80'
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+  maintenance:
+    image: lensegua-windows-tools:local
+    build:
+      context: ..
+      target: tools
+    profiles: ['maintenance']
+    environment:
+      <<: *local-environment
+      INITIAL_ADMIN_EMAIL: ${INITIAL_ADMIN_EMAIL:-admin@lensegua.local}
+      INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD:?Define INITIAL_ADMIN_PASSWORD}
+      INITIAL_ADMIN_FIRST_NAME: Administrador
+      INITIAL_ADMIN_LAST_NAME: LENSEGUA
+    volumes:
+      - ../storage/media:/app/storage/media
+    depends_on:
+      postgres:
+        condition: service_healthy

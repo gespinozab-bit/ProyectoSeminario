@@ -1,0 +1,17 @@
+node_modules
+**/node_modules
+**/dist
+**/generated
+**/*.tsbuildinfo
+.git
+.agents
+.codex
+.aws
+**/.env
+**/.env.*
+!**/.env.example
+storage
+backups
+*.log
+**/*.log
+coverage

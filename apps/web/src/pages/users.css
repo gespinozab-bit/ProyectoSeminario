@@ -1,0 +1,224 @@
+.users-page > .notice {
+  margin-bottom: 1rem;
+}
+.users-filters {
+  display: grid;
+  grid-template-columns: minmax(12rem, 2fr) 1fr 1fr auto;
+  align-items: end;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+.users-count {
+  font-size: 0.9rem;
+}
+.users-list {
+  display: grid;
+  gap: 1rem;
+}
+.user-card {
+  display: grid;
+  gap: 1rem;
+}
+.user-card__identity {
+  display: flex;
+  gap: 1rem;
+  min-width: 0;
+}
+.user-card__identity > div:last-child {
+  min-width: 0;
+}
+.user-avatar {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 1rem;
+  background: #d7f0e8;
+  color: #086f5b;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+.user-card h2 {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin: 0;
+  font-size: 1.2rem;
+  overflow-wrap: anywhere;
+}
+.user-card h2 small {
+  padding: 0.3rem 0.5rem;
+  border-radius: 0.4rem;
+  background: #e7eef4;
+  color: #334e68;
+  font-size: 0.7rem;
+}
+.user-card p {
+  font-size: 0.95rem;
+  overflow-wrap: anywhere;
+}
+.user-card .badges .user-inactive {
+  background: #e7eef4;
+  color: #486581;
+}
+.user-card__security {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  margin-top: 0.8rem;
+  color: #486581;
+  font-size: 0.8rem;
+}
+.user-card .actions {
+  border-top: 1px solid #d9e2ec;
+  padding-top: 1rem;
+}
+.user-card .user-own-note {
+  font-size: 0.8rem;
+  margin: 0;
+}
+.user-dialog {
+  width: min(calc(100% - 2rem), 40rem);
+  max-height: calc(100dvh - 3rem);
+  border: 1px solid #d9e2ec;
+  border-radius: 1rem;
+  padding: 1.5rem;
+  color: #102a43;
+  background: white;
+  box-shadow: 0 24px 80px #102a4330;
+}
+.user-dialog::backdrop {
+  background: #102a4399;
+}
+.user-dialog form {
+  display: grid;
+  gap: 1.25rem;
+}
+.user-dialog__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: 1rem;
+}
+.user-dialog__header h2 {
+  margin: 0.4rem 0;
+  font-size: 1.6rem;
+}
+.user-dialog__header p {
+  margin-bottom: 0;
+  font-size: 0.9rem;
+  overflow-wrap: anywhere;
+}
+.user-dialog__header > button {
+  flex-shrink: 0;
+}
+.user-dialog__fields {
+  display: grid;
+  gap: 1.1rem;
+  min-width: 0;
+  border: 0;
+  padding: 0;
+  margin: 0;
+}
+.user-dialog__fields p {
+  font-size: 0.9rem;
+}
+.user-name-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+.user-role-options {
+  display: grid;
+  gap: 0.8rem;
+  min-width: 0;
+  border: 1px solid #bcccdc;
+  border-radius: 0.65rem;
+  padding: 1rem;
+  margin: 0;
+}
+.user-role-options legend {
+  padding: 0 0.4rem;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+.user-role-options label {
+  display: flex;
+  align-items: start;
+  gap: 0.7rem;
+  cursor: pointer;
+}
+.user-role-options small {
+  display: block;
+  margin-top: 0.3rem;
+  color: #486581;
+  font-weight: 400;
+  line-height: 1.5;
+}
+.user-role-options input,
+.user-password-tools input {
+  width: 1.1rem;
+  height: 1.1rem;
+  flex-shrink: 0;
+  margin: 0.15rem 0 0;
+  accent-color: #147d64;
+}
+.user-role-options p {
+  margin: 0;
+}
+.user-dialog .user-password-help {
+  padding: 1rem;
+  margin: 0;
+  background: #f0f6fa;
+  border-radius: 0.6rem;
+  line-height: 1.6;
+}
+.user-password-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.user-password-tools label {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+.users-page :focus-visible,
+.user-dialog :focus-visible {
+  outline: 3px solid #2563a8;
+  outline-offset: 3px;
+}
+@media (max-width: 1000px) {
+  .users-filters {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+@media (max-width: 600px) {
+  .users-filters,
+  .user-name-grid {
+    grid-template-columns: 1fr;
+  }
+  .user-dialog {
+    padding: 1rem;
+  }
+  .user-dialog .form-actions {
+    flex-direction: column-reverse;
+  }
+  .user-dialog .form-actions > * {
+    width: 100%;
+  }
+  .user-card .actions > button {
+    flex: 1;
+  }
+  .user-avatar {
+    width: 2.5rem;
+    height: 2.5rem;
+  }
+  .users-page .pagination {
+    flex-wrap: wrap;
+  }
+}

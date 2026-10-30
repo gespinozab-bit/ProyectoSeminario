@@ -1,0 +1,234 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+
+  @@map("user_status")
+}
+
+enum PublicationStatus {
+  DRAFT
+  PUBLISHED
+  INACTIVE
+
+  @@map("publication_status")
+}
+
+enum MediaType {
+  IMAGE
+  VIDEO
+
+  @@map("media_type")
+}
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  PUBLISH
+  DEACTIVATE
+  ASSIGN
+  REVOKE
+  LOGIN_SUCCESS
+  LOGIN_FAILURE
+  LOGOUT
+  PASSWORD_CHANGE
+  PASSWORD_RESET
+
+  @@map("audit_action")
+}
+
+model User {
+  id                   String               @id @default(uuid()) @db.Uuid
+  email                String               @unique @db.VarChar(320)
+  firstName            String               @map("first_name") @db.VarChar(100)
+  lastName             String               @map("last_name") @db.VarChar(100)
+  passwordHash         String?              @map("password_hash") @db.VarChar(255)
+  status               UserStatus           @default(ACTIVE)
+  failedLoginAttempts  Int                  @default(0) @map("failed_login_attempts")
+  lockedUntil          DateTime?            @map("locked_until") @db.Timestamptz(3)
+  mustChangePassword   Boolean              @default(true) @map("must_change_password")
+  tokenVersion         Int                  @default(0) @map("token_version")
+  lastLoginAt          DateTime?            @map("last_login_at") @db.Timestamptz(3)
+  createdAt            DateTime             @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt            DateTime             @updatedAt @map("updated_at") @db.Timestamptz(3)
+  roles                UserRole[]           @relation("UserRoles")
+  roleAssignmentsGiven UserRole[]           @relation("RoleAssignedBy")
+  contentsCreated      EducationalContent[] @relation("ContentCreatedBy")
+  contentsUpdated      EducationalContent[] @relation("ContentUpdatedBy")
+  auditLogs            AuditLog[]
+  refreshSessions      RefreshSession[]
+
+  @@index([status])
+  @@map("users")
+}
+
+model RefreshSession {
+  id         String    @id @default(uuid()) @db.Uuid
+  userId     String    @map("user_id") @db.Uuid
+  tokenHash  String    @unique @map("token_hash") @db.Char(64)
+  familyId   String    @map("family_id") @db.Uuid
+  expiresAt  DateTime  @map("expires_at") @db.Timestamptz(3)
+  revokedAt  DateTime? @map("revoked_at") @db.Timestamptz(3)
+  lastUsedAt DateTime? @map("last_used_at") @db.Timestamptz(3)
+  ipAddress  String?   @map("ip_address") @db.Inet
+  userAgent  String?   @map("user_agent") @db.Text
+  createdAt  DateTime  @default(now()) @map("created_at") @db.Timestamptz(3)
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, revokedAt, expiresAt])
+  @@index([familyId])
+  @@map("refresh_sessions")
+}
+
+model Role {
+  id          String           @id @default(uuid()) @db.Uuid
+  code        String           @unique @db.VarChar(50)
+  name        String           @db.VarChar(100)
+  description String?          @db.VarChar(255)
+  isSystem    Boolean          @default(false) @map("is_system")
+  createdAt   DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime         @updatedAt @map("updated_at") @db.Timestamptz(3)
+  users       UserRole[]
+  permissions RolePermission[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id          String           @id @default(uuid()) @db.Uuid
+  code        String           @unique @db.VarChar(100)
+  name        String           @db.VarChar(120)
+  description String?          @db.VarChar(255)
+  createdAt   DateTime         @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime         @updatedAt @map("updated_at") @db.Timestamptz(3)
+  roles       RolePermission[]
+
+  @@map("permissions")
+}
+
+model UserRole {
+  userId       String   @map("user_id") @db.Uuid
+  roleId       String   @map("role_id") @db.Uuid
+  assignedById String?  @map("assigned_by_id") @db.Uuid
+  assignedAt   DateTime @default(now()) @map("assigned_at") @db.Timestamptz(3)
+  user         User     @relation("UserRoles", fields: [userId], references: [id], onDelete: Cascade)
+  role         Role     @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  assignedBy   User?    @relation("RoleAssignedBy", fields: [assignedById], references: [id], onDelete: SetNull)
+
+  @@id([userId, roleId])
+  @@index([roleId])
+  @@index([assignedById])
+  @@map("user_roles")
+}
+
+model RolePermission {
+  roleId       String     @map("role_id") @db.Uuid
+  permissionId String     @map("permission_id") @db.Uuid
+  grantedAt    DateTime   @default(now()) @map("granted_at") @db.Timestamptz(3)
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@index([permissionId])
+  @@map("role_permissions")
+}
+
+model EducationalModule {
+  id          String               @id @default(uuid()) @db.Uuid
+  code        String               @unique @db.VarChar(50)
+  slug        String               @unique @db.VarChar(100)
+  title       String               @db.VarChar(120)
+  description String?              @db.VarChar(500)
+  status      PublicationStatus    @default(DRAFT)
+  sortOrder   Int                  @default(0) @map("sort_order")
+  createdAt   DateTime             @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt   DateTime             @updatedAt @map("updated_at") @db.Timestamptz(3)
+  contents    EducationalContent[]
+
+  @@index([status, sortOrder])
+  @@map("educational_modules")
+}
+
+model EducationalContent {
+  id                String            @id @default(uuid()) @db.Uuid
+  moduleId          String            @map("module_id") @db.Uuid
+  slug              String            @db.VarChar(150)
+  title             String            @db.VarChar(180)
+  summary           String?           @db.VarChar(500)
+  body              Json?
+  learningObjective String?           @map("learning_objective") @db.VarChar(500)
+  status            PublicationStatus @default(DRAFT)
+  sortOrder         Int               @default(0) @map("sort_order")
+  publishedAt       DateTime?         @map("published_at") @db.Timestamptz(3)
+  createdById       String?           @map("created_by_id") @db.Uuid
+  updatedById       String?           @map("updated_by_id") @db.Uuid
+  createdAt         DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt         DateTime          @updatedAt @map("updated_at") @db.Timestamptz(3)
+  module            EducationalModule @relation(fields: [moduleId], references: [id], onDelete: Restrict)
+  createdBy         User?             @relation("ContentCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  updatedBy         User?             @relation("ContentUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  media             MediaAsset[]
+
+  @@unique([moduleId, slug])
+  @@unique([moduleId, sortOrder])
+  @@index([status, publishedAt])
+  @@index([createdById])
+  @@index([updatedById])
+  @@map("educational_contents")
+}
+
+model MediaAsset {
+  id              String            @id @default(uuid()) @db.Uuid
+  contentId       String            @map("content_id") @db.Uuid
+  type            MediaType
+  url             String            @db.Text
+  storageKey      String?           @unique @map("storage_key") @db.VarChar(500)
+  mimeType        String            @map("mime_type") @db.VarChar(100)
+  title           String?           @db.VarChar(180)
+  altText         String?           @map("alt_text") @db.VarChar(300)
+  caption         String?           @db.VarChar(500)
+  thumbnailUrl    String?           @map("thumbnail_url") @db.Text
+  durationSeconds Int?              @map("duration_seconds")
+  sizeBytes       BigInt?           @map("size_bytes")
+  isPrimary       Boolean           @default(false) @map("is_primary")
+  status          PublicationStatus @default(DRAFT)
+  sortOrder       Int               @default(0) @map("sort_order")
+  createdAt       DateTime          @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt       DateTime          @updatedAt @map("updated_at") @db.Timestamptz(3)
+  content         EducationalContent @relation(fields: [contentId], references: [id], onDelete: Cascade)
+
+  @@unique([contentId, sortOrder])
+  @@index([contentId, type, status])
+  @@index([contentId, isPrimary, status])
+  @@map("media_assets")
+}
+
+model AuditLog {
+  id         BigInt      @id @default(autoincrement())
+  actorId    String?     @map("actor_id") @db.Uuid
+  action     AuditAction
+  entityType String      @map("entity_type") @db.VarChar(100)
+  entityId   String      @map("entity_id") @db.VarChar(100)
+  beforeData Json?       @map("before_data")
+  afterData  Json?       @map("after_data")
+  metadata   Json?
+  requestId  String?     @map("request_id") @db.VarChar(100)
+  ipAddress  String?     @map("ip_address") @db.Inet
+  userAgent  String?     @map("user_agent") @db.Text
+  createdAt  DateTime    @default(now()) @map("created_at") @db.Timestamptz(3)
+  actor      User?       @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([actorId, createdAt])
+  @@index([entityType, entityId, createdAt])
+  @@index([action, createdAt])
+  @@map("audit_logs")
+}

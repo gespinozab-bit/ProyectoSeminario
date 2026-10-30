@@ -1,0 +1,46 @@
+{
+  "name": "lensegua",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run build -w @lensegua/shared && concurrently -n shared,api,web -c yellow,blue,green \"npm run dev -w @lensegua/shared\" \"npm run dev -w @lensegua/api\" \"npm run dev -w @lensegua/web\"",
+    "dev:web": "npm run dev -w @lensegua/web",
+    "dev:api": "npm run build -w @lensegua/shared && npm run dev -w @lensegua/api",
+    "build": "npm run build -w @lensegua/shared && npm run build -w @lensegua/api && npm run build -w @lensegua/web",
+    "typecheck": "npm run build -w @lensegua/shared && npm run typecheck --workspaces --if-present",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier . --write",
+    "format:check": "prettier . --check",
+    "db:generate": "npm run db:generate -w @lensegua/api",
+    "db:migrate": "npm run db:migrate -w @lensegua/api",
+    "db:deploy": "npm run db:deploy -w @lensegua/api",
+    "db:seed": "npm run db:seed -w @lensegua/api",
+    "db:status": "npm run db:status -w @lensegua/api",
+    "test": "npm run test --workspaces --if-present"
+  },
+  "engines": {
+    "node": ">=20.19.0",
+    "npm": ">=10.0.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "concurrently": "^9.2.1",
+    "eslint": "^10.11.0",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^16.3.0",
+    "prettier": "^3.6.2",
+    "typescript": "^5.9.2",
+    "typescript-eslint": "^8.42.0"
+  },
+  "overrides": {
+    "vite": "^7.3.7",
+    "deepmerge-ts": "^8.0.0",
+    "mysql2": "^3.24.0"
+  }
+}

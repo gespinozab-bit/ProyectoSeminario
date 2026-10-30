@@ -1,0 +1,117 @@
+name: lensegua-production
+
+x-api-environment: &api-environment
+  NODE_ENV: production
+  PORT: 3000
+  WEB_ORIGIN: ${WEB_ORIGIN:?Define WEB_ORIGIN}
+  DATABASE_URL: postgresql://lensegua:${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD}@postgres:5432/lensegua
+  JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?Define JWT_ACCESS_SECRET}
+  JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?Define JWT_REFRESH_SECRET}
+  TRUST_PROXY_HOPS: 1
+  MEDIA_STORAGE_PATH: /app/storage/media
+  LOG_LEVEL: info
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: lensegua
+      POSTGRES_USER: lensegua
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U lensegua -d lensegua']
+      interval: 5s
+      timeout: 5s
+      retries: 15
+    logging: &logging
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+
+  migrate:
+    image: lensegua-tools:${IMAGE_TAG:-local}
+    build:
+      context: ..
+      target: tools
+    environment: *api-environment
+    command: ['npm', 'exec', '--', 'prisma', 'migrate', 'deploy']
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: 'no'
+    logging: *logging
+
+  api:
+    image: lensegua-api:${IMAGE_TAG:-local}
+    build:
+      context: ..
+      target: api
+    restart: unless-stopped
+    init: true
+    environment: *api-environment
+    volumes:
+      - media_data:/app/storage/media
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:3000/api/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      start_period: 15s
+      retries: 5
+    logging: *logging
+
+  web:
+    image: lensegua-web:${IMAGE_TAG:-local}
+    build:
+      context: ..
+      target: web
+    restart: unless-stopped
+    environment:
+      DOMAIN: ${DOMAIN:?Define DOMAIN}
+    ports:
+      - '${BIND_ADDRESS:-0.0.0.0}:${HTTP_PORT:-80}:80'
+      - '${BIND_ADDRESS:-0.0.0.0}:${HTTPS_PORT:-443}:443'
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      api:
+        condition: service_healthy
+    logging: *logging
+
+  maintenance:
+    image: lensegua-tools:${IMAGE_TAG:-local}
+    build:
+      context: ..
+      target: tools
+    profiles: ['maintenance']
+    environment:
+      <<: *api-environment
+      INITIAL_ADMIN_EMAIL: ${INITIAL_ADMIN_EMAIL:-}
+      INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD:-}
+      INITIAL_ADMIN_FIRST_NAME: ${INITIAL_ADMIN_FIRST_NAME:-Administrador}
+      INITIAL_ADMIN_LAST_NAME: ${INITIAL_ADMIN_LAST_NAME:-LENSEGUA}
+    volumes:
+      - media_data:/app/storage/media
+    depends_on:
+      postgres:
+        condition: service_healthy
+    logging: *logging
+
+volumes:
+  postgres_data:
+  media_data:
+  caddy_data:
+  caddy_config:

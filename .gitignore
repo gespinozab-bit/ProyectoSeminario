@@ -1,0 +1,27 @@
+node_modules/
+dist/
+coverage/
+**/cypress/screenshots/
+**/cypress/videos/
+backups/
+.vite/
+
+.env
+.env.*
+!.env.example
+
+*.log
+npm-debug.log*
+
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.tsbuildinfo
+
+# Cliente Prisma generado durante instalación/CI.
+apps/api/src/generated/
+
+# Archivos multimedia locales (se conserva únicamente la carpeta)
+storage/media/*
+!storage/media/.gitkeep

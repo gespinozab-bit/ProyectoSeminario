@@ -1,0 +1,79 @@
+name: LENSEGUA CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lensegua-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      NODE_ENV: test
+      LENSEGUA_E2E: '1'
+      CYPRESS_BASE_URL: http://127.0.0.1:5174
+      SYSTEM_NAME: LENSEGUA
+      GRAPHQL_INTROSPECTION: 'true'
+      # Las contraseñas E2E y los secretos JWT se generan por ejecución.
+      # PGlite crea una conexión privada en memoria; no se utilizan secrets de producción.
+    steps:
+      - name: Obtener código
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Preparar Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Instalar dependencias y Cypress
+        run: npm ci --include=dev
+
+      - name: Generar cliente Prisma sin conectar una base externa
+        run: npm run db:generate
+        env:
+          # Prisma requiere una URL para leer su configuración, pero generate no conecta.
+          DATABASE_URL: postgresql://unused:unused@127.0.0.1:1/generate_only
+
+      - name: Compilar todos los workspaces
+        run: npm run build
+
+      - name: Revisar código y tipos
+        run: |
+          npm run lint
+          npm run typecheck
+          npx tsc --noEmit -p apps/web/cypress/tsconfig.json
+
+      - name: Verificar preparación y reinicio de datos temporales
+        run: npm run e2e:verify -w @lensegua/api
+
+      # Incluye unitarias y la integración REST/GraphQL; el script ignora bases externas.
+      - name: Ejecutar pruebas REST y GraphQL con PostgreSQL en memoria
+        run: npm run test:isolated -w @lensegua/api
+
+      # setupNodeEvents prepara PGlite, inicia API y Vite, y espera sus respuestas HTTP.
+      # El before/beforeEach de las suites reinicia exclusivamente los datos temporales.
+      - name: Iniciar servicios aislados y ejecutar Cypress headless
+        id: cypress
+        run: npm run cypress:run -w @lensegua/web -- --browser chrome --config video=true
+
+      - name: Guardar evidencias de fallos de Cypress
+        if: ${{ failure() && steps.cypress.outcome == 'failure' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: cypress-failures-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            apps/web/cypress/screenshots/**
+            apps/web/cypress/videos/**
+          if-no-files-found: ignore
+          retention-days: 7
